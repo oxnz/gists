@@ -1,0 +1,151 @@
+OVERVIEW OF SETTING UP A CERTIFICATE CHAIN AND CLIENT CERTIFICATES FOR JETTY
+============================================================================
+
+#Useful links:
+http://quakology.blogspot.co.uk/2009/06/how-to-use-ssl-with-client-certificate.html
+http://blog.nategood.com/client-side-certificate-authentication-in-ngi
+http://wiki.eclipse.org/Jetty/Howto/Configure_SSL
+
+#Use password: fakegame
+
+# Create the CA Key and Certificate for signing Client Certs
+ahorne@lorelei:resources$ openssl genrsa -des3 -out ca.key 4096
+Generating RSA private key, 4096 bit long modulus
+........................................++
+...............................................................................................................................................................................................................................................++
+e is 65537 (0x10001)
+Enter pass phrase for ca.key:
+Verifying - Enter pass phrase for ca.key:
+
+ahorne@lorelei:resources$ openssl req -new -x509 -days 365 -key ca.key -out ca.crt
+Enter pass phrase for ca.key:
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:UK
+State or Province Name (full name) [Some-State]:England
+Locality Name (eg, city) []:London
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:MyCo
+Organizational Unit Name (eg, section) []:MyOrg
+Common Name (eg, YOUR name) []:MyOrg Root CA
+Email Address []:
+
+# Create server key, CSR and certificate
+ahorne@lorelei:resources$ openssl genrsa -des3 -out server.key 1024
+Generating RSA private key, 1024 bit long modulus
+.++++++
+..........++++++
+e is 65537 (0x10001)
+Enter pass phrase for server.key:
+Verifying - Enter pass phrase for server.key:
+ahorne@lorelei:resources$ openssl req -new -key server.key -out server.csr
+Enter pass phrase for server.key:
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:UK
+State or Province Name (full name) [Some-State]:England
+Locality Name (eg, city) []:London
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:MyCo
+Organizational Unit Name (eg, section) []:MyOrg
+Common Name (eg, YOUR name) []:localhost
+Email Address []:
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+An optional company name []:
+
+# Self-Sign the Certificate
+ahorne@lorelei:resources$ openssl x509 -req -days 365 -in server.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out server.crt
+Signature ok
+subject=/C=UK/ST=England/L=London/O=MyCo/OU=MyOrg/CN=localhost
+Getting CA Private Key
+Enter pass phrase for ca.key:
+ahorne@lorelei:resources$ openssl genrsa -des3 -out client.key 1024
+Generating RSA private key, 1024 bit long modulus
+.......++++++
+...................................................................++++++
+e is 65537 (0x10001)
+Enter pass phrase for client.key:
+Verifying - Enter pass phrase for client.key:
+
+# Create client key and CSR
+ahorne@lorelei:resources$ openssl req -new -key client.key -out client.csr
+Enter pass phrase for client.key:
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:UK
+State or Province Name (full name) [Some-State]:England
+Locality Name (eg, city) []:London
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:MyCo
+Organizational Unit Name (eg, section) []:MyOrg
+Common Name (eg, YOUR name) []:MyUser
+Email Address []:
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+An optional company name []:
+ahorne@lorelei:resources$ openssl x509 -req -days 365 -in client.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out client.crt
+Signature ok
+subject=/C=UK/ST=England/L=London/O=MyOrg/OU=MyCo/CN=MyUser
+Getting CA Private Key
+Enter pass phrase for ca.key:
+
+#Create the keystore (note password 'jetty8')
+openssl pkcs12 -inkey server.key -in server.crt -export -out jetty.pkcs12
+keytool -importkeystore -srckeystore jetty.pkcs12 -srcstoretype PKCS12 -destkeystore jetty-ssl.keystore
+keytool -import -trustcacerts -alias MyOrg-root-ca -file ca.crt -keystore jetty-ssl.keystore
+
+#Rename alias
+keytool -changealias -alias 1 -destalias jetty -keystore jetty-ssl.keystore
+
+#Jetty Config
+
+Note that keyManagerPassword is the password used to protect the private key. keyStore/trustStorePassword are the one protecting the artefact generated by keytool.
+
+<?xml version="1.0"  encoding="ISO-8859-1"?>
+<!DOCTYPE Configure PUBLIC "-//Jetty//Configure//EN" "http://www.eclipse.org/jetty/configure.dtd">
+
+<Configure id="Server" class="org.eclipse.jetty.server.Server">
+	<Call name="addConnector">
+		<Arg>
+			<New class="org.eclipse.jetty.server.ssl.SslSelectChannelConnector">
+				<Arg>
+					<New class="org.eclipse.jetty.http.ssl.SslContextFactory">
+						<Set name="keyStore"><SystemProperty name="jetty.home" default="."/>/etc/keystore/jetty-ssl.keystore</Set>
+						<Set name="keyStorePassword">jetty8</Set>
+						<Set name="keyManagerPassword">fakegame</Set>
+						<Set name="trustStore"><SystemProperty name="jetty.home" default="."/>/etc/keystore/jetty-ssl.keystore</Set>
+						<Set name="trustStorePassword">jetty8</Set>
+						<Set name="certAlias">jetty</Set>
+					</New>
+				</Arg>
+				<Set name="port">8443</Set>
+				<Set name="maxIdleTime">30000</Set>
+			</New>
+		</Arg>
+	</Call>
+</Configure>
+
+#Testing
+Will pass:
+curl -v -s -k --key client.key --cert client.crt -X POST -d '{"token":"mytoken"}' -H 'Content-Type:application/json' https://localhost:8443/game/deliver
+
+Will fail:
+curl -v -s -k -X POST -d '{"token":"mytoken"}' -H 'Content-Type:application/json' https://localhost:8443/game/deliver
+
