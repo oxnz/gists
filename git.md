@@ -103,3 +103,19 @@ Still need local cleanup
     git tag -a v0.1 -m "Initial working version"
     git push --tags
     git describe --tags
+
+### Auto Staging
+
+Use this command to stage tracked files, including deleting previously tracked files:
+
+For current working path:
+
+    git add -u .
+
+For ALL working tree:
+
+    git add -u
+
+
+
+
