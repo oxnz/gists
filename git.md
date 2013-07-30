@@ -116,6 +116,20 @@ For ALL working tree:
 
     git add -u
 
+### Diffs
+
+Show diff of 'added' files:
+
+    git diff HEAD
+
+Show un-pushed commits:
+
+    git log origin/master..HEAD
+
+Show un-pushed diffs:
+
+    git diff origin/master..HEAD
+
 
 
 
