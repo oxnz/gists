@@ -53,3 +53,8 @@ It seems necessary to use 127.0.0.1 rather than localhost for this to work corre
 ### Localhost aliases
 
     sudo ifconfig lo0 alias 127.0.0.2 netmask 255.0.0.0
+
+### Forward a port on the localhost
+
+    iptables -t nat -A PREROUTING -p tcp --dport 8080 -j REDIRECT --to-ports 8765
+
