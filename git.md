@@ -78,6 +78,10 @@ Checkout a remote branch:
     git log (to get commit)
     git checkout 9aaf1187b9376e1ec68016d769200a94a0c276e0 eclipse_dev/BlinkingLED/main.cpp
 
+### Ammend Commit
+
+    git commit --amend -m "New message"
+
 ### Keep Fork Updated
 
 Once:
