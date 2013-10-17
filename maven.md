@@ -15,3 +15,8 @@ Now edit pom.xml, remove dummy tests created by the archetype etc.
 
     cd /tmp
     svn import -m "Skeleton for project1" project1 https://svn.arunhorne.co.uk/svn/project1
+
+### Get Interesting Info Out Of POM
+
+    mvn help:evaluate -Dexpression=project.artifactId
+
