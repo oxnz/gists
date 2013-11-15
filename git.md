@@ -134,6 +134,12 @@ Show un-pushed diffs:
 
     git diff origin/master..HEAD
 
+Show what changed:
 
+    git diff --stat master master@{1}
+    git diff master master@{1}
+    git diff master master@{1} <file>
+    git diff master master@{1} <dir>
+    git diff master master@{10.minutes.ago}
 
 
